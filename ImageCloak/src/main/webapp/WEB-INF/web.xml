@@ -4,6 +4,9 @@
         <servlet-name>SteganographyServlet</servlet-name>
         <servlet-class>br.com.imagecloak.imagecloak.servlets.SteganographyServlet</servlet-class>
     </servlet>
+    <welcome-file-list>
+        <welcome-file>jsp/index.jsp</welcome-file>
+    </welcome-file-list>
     <servlet-mapping>
         <servlet-name>SteganographyServlet</servlet-name>
         <url-pattern>/steganography</url-pattern>

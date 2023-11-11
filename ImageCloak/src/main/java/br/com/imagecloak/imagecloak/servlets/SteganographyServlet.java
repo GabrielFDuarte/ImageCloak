@@ -1,9 +1,9 @@
 package br.com.imagecloak.imagecloak.servlets;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Base64;
 import javax.imageio.ImageIO;
 import javax.servlet.ServletException;
@@ -19,68 +19,60 @@ public class SteganographyServlet extends HttpServlet {
 
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Recupera os parâmetros do formulário
         String imageData = request.getParameter("imageData");
         String hiddenData = request.getParameter("hiddenData");
         String password = request.getParameter("password");
 
         // Realiza validações, como verificar se os parâmetros não estão vazios, e validar a senha, se necessário
-        // Chama o método para realizar a esteganografia
         String imagemComEsteganografia = realizarEsteganografia(imageData, hiddenData, password);
 
-        // Envia a imagem finalizada com esteganografia como resposta
-        response.setContentType("image/png"); // Defina o tipo de conteúdo como uma imagem PNG
-        response.getOutputStream().write(Base64.getDecoder().decode(imagemComEsteganografia));
+        response.setContentType("image/png");
 
-//        response.setContentType("text/html;charset=UTF-8");
-//        try (PrintWriter out = response.getWriter()) {
-//            /* TODO output your page here. You may use following sample code. */
-//            out.println("<!DOCTYPE html>");
-//            out.println("<html>");
-//            out.println("<head>");
-//            out.println("<title>Servlet SteganographyServlet</title>");            
-//            out.println("</head>");
-//            out.println("<body>");
-//            out.println("<h1>Servlet SteganographyServlet at " + request.getContextPath() + "</h1>");
-//            out.println("</body>");
-//            out.println("</html>");
-//        }
+        // Converte a imagem esteganografada em bytes e envie como resposta
+        byte[] imageBytes = Base64.getDecoder().decode(imagemComEsteganografia);
+        response.getOutputStream().write(imageBytes);
     }
 
     private String realizarEsteganografia(String imageData, String hiddenData, String password) throws IOException {
-        // Carrega a imagem de hospedeiro
-        //BufferedImage imagem = ImageIO.read(new File("imagem.png"));
-        BufferedImage imagem = ImageIO.read(new File(imageData));
+        try {
+            // Carrega a imagem de hospedeiro
+            //BufferedImage imagem = ImageIO.read(new File("imagem.png"));
+            BufferedImage imagem = ImageIO.read(new File(imageData));
 
-        // Converte o texto a ser ocultado em uma sequência de bits
-        byte[] bytes = hiddenData.getBytes();
+            // Converte o texto a ser ocultado em uma sequência de bits
+            byte[] bytes = hiddenData.getBytes();
 
-        // Oculta os bits nos pixels da imagem
-        int byteIndex = 0;
-        for (int y = 0; y < imagem.getHeight(); y++) {
-            for (int x = 0; x < imagem.getWidth(); x++) {
-                int pixel = imagem.getRGB(x, y);
-                int alpha = (pixel >> 24) & 0xFF;
-                int red = (pixel >> 16) & 0xFF;
-                int green = (pixel >> 8) & 0xFF;
-                int blue = pixel & 0xFF;
+            // Oculta os bits nos pixels da imagem
+            int byteIndex = 0;
+            for (int y = 0; y < imagem.getHeight(); y++) {
+                for (int x = 0; x < imagem.getWidth(); x++) {
+                    int pixel = imagem.getRGB(x, y);
+                    int alpha = (pixel >> 24) & 0xFF;
+                    int red = (pixel >> 16) & 0xFF;
+                    int green = (pixel >> 8) & 0xFF;
+                    int blue = pixel & 0xFF;
 
-                if (byteIndex < bytes.length) {
-                    red = (red & 0xFE) | ((bytes[byteIndex] >> 7) & 0x01);
-                    green = (green & 0xFE) | ((bytes[byteIndex] >> 6) & 0x01);
-                    blue = (blue & 0xFC) | ((bytes[byteIndex] >> 5) & 0x03);
-                    byteIndex++;
+                    if (byteIndex < bytes.length) {
+                        red = (red & 0xFE) | ((bytes[byteIndex] >> 7) & 0x01);
+                        green = (green & 0xFE) | ((bytes[byteIndex] >> 6) & 0x01);
+                        blue = (blue & 0xFC) | ((bytes[byteIndex] >> 5) & 0x03);
+                        byteIndex++;
+                    }
+
+                    pixel = (alpha << 24) | (red << 16) | (green << 8) | blue;
+                    imagem.setRGB(x, y, pixel);
                 }
-
-                pixel = (alpha << 24) | (red << 16) | (green << 8) | blue;
-                imagem.setRGB(x, y, pixel);
             }
-        }
-        
-        // Salva a imagem com os dados já ocultos
-        ImageIO.write(imagem, "png", new File("imagem_com_esteganografia.png"));
 
-        return imagemComEsteganografia;
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(imagem, "png", baos);
+            byte[] imageBytes = baos.toByteArray();
+
+            return Base64.getEncoder().encodeToString(imageBytes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
